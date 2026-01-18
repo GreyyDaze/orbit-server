@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  # The Database
+  db:
+    image: postgres:15
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=feedback_board
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=dev_password_123
+    ports:
+      - "5433:5432"
+
+  # The Real-Time Message Broker
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
