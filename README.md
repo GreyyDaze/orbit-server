@@ -14,7 +14,7 @@ The backend API and websocket server for **Orbit**, an anonymous feedback board 
 
 - **Framework**: [Django 5](https://www.djangoproject.com/) + [Django REST Framework](https://www.django-rest-framework.org/)
 - **Real-Time**: [Django Channels](https://channels.readthedocs.io/) + [Redis](https://redis.io/)
-- **Asynchronous**: [Celery](https://docs.celeryq.dev/)
+- **Asynchronous**: [Celery](https://docs.celeryq.dev/) + [Celery Beat](https://docs.celeryq.dev/en/stable/userguide/periodic-tasks.html)
 - **Database**: PostgreSQL
 - **Security**: SimpleJWT, CORS Headers
 
