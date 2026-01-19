@@ -16,7 +16,7 @@ Traditional auth systems require email/password, creating friction that kills sp
 
 #### Client-Side (Frontend)
 
-1.  **Generation**: On first visit, `useGhostIdentity.ts` checks IndexedDB for an existing Ghost ID.
+1.  **Generation**: Upon first interaction (Action), `useGhostIdentity.ts` checks IndexedDB for an existing Ghost ID.
 2.  **If Not Found**: The client calls `POST /api/v1/identity/ghost/generate/` which returns a fresh UUID (v4).
 3.  **Storage**: The Ghost ID is saved to **IndexedDB** (not localStorage, for better privacy isolation).
 4.  **Transmission**: Every API request includes `X-Ghost-ID: <uuid>` header.
