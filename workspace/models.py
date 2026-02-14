@@ -65,3 +65,17 @@ class BoardInvite(models.Model):
 
     def __str__(self):
         return f"{self.email} invited to {self.board.title}"
+
+class AccessRequest(models.Model):
+    board = models.ForeignKey(Board, related_name="access_requests", on_delete=models.CASCADE)
+    ghost = models.ForeignKey('identity.AnonymousProfile', on_delete=models.CASCADE)
+    email = models.EmailField(null=True, blank=True)
+    message = models.TextField(blank=True)
+    status = models.CharField(max_length=20, default='PENDING') # PENDING, APPROVED, REJECTED
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('board', 'ghost')
+
+    def __str__(self):
+        return f"Request for {self.board.title} from {self.ghost.ghost_id}"

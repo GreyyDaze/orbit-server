@@ -65,7 +65,20 @@ class NoteViewSet(viewsets.ModelViewSet):
         admin_token = self.request.headers.get('X-Admin-Token')
         is_admin = (board.creator_ghost == ghost) or (admin_token and str(board.secret_admin_token) == admin_token)
 
-        if board.is_public or is_admin:
+        # Check for invited users
+        user = self.request.user
+        is_invited = False
+        
+        if user.is_authenticated:
+            # Also allow if user owns the creator ghost (claimed)
+            if board.creator_ghost.user == user:
+                is_admin = True
+            
+            # Check invite list: exact email match
+            if board.invites.filter(email=user.email).exists():
+                is_invited = True
+
+        if board.is_public or is_admin or is_invited:
             serializer.save(creator_ghost=ghost)
         else:
             raise PermissionDenied("This board is private.")
@@ -97,6 +110,11 @@ class NoteViewSet(viewsets.ModelViewSet):
         search_query = request.query_params.get('search', None)
         if search_query:
             notes = notes.filter(content__icontains=search_query)
+
+        # Board filter
+        board_id = request.query_params.get('board')
+        if board_id:
+            notes = notes.filter(board_id=board_id)
         
         page = self.paginate_queryset(notes)
         serializer = self.get_serializer(page, many=True)
@@ -127,6 +145,11 @@ class NoteViewSet(viewsets.ModelViewSet):
         search_query = request.query_params.get('search', None)
         if search_query:
             notes = notes.filter(content__icontains=search_query)
+
+        # Board filter
+        board_id = request.query_params.get('board')
+        if board_id:
+            notes = notes.filter(board_id=board_id)
         
         page = self.paginate_queryset(notes)
         serializer = self.get_serializer(page, many=True)

@@ -1,11 +1,19 @@
 from rest_framework import serializers
 from identity.serializers import UserSerializer
-from .models import Board, Note, BoardInvite
+from .models import Board, Note, BoardInvite, AccessRequest
 
 class BoardInviteSerializer(serializers.ModelSerializer):
     class Meta:
         model = BoardInvite
         fields = ['id', 'email', 'invited_at']
+
+class AccessRequestSerializer(serializers.ModelSerializer):
+    ghost_id = serializers.UUIDField(source='ghost.ghost_id', read_only=True)
+    
+    class Meta:
+        model = AccessRequest
+        fields = ['id', 'board', 'ghost_id', 'email', 'message', 'status', 'created_at']
+        read_only_fields = ['id', 'board', 'ghost_id', 'status', 'created_at']
 
 class NoteSerializer(serializers.ModelSerializer):
     upvotes = serializers.IntegerField(source='upvote_count', read_only=True)

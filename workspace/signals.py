@@ -3,7 +3,7 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
-from .models import Note, Board, Upvote
+from .models import Note, Board, Upvote, BoardInvite, AccessRequest
 from .serializers import NoteSerializer
 
 def broadcast_update(board_id, message_type, data):
@@ -74,3 +74,34 @@ def upvote_removed(sender, instance, **kwargs):
     # Force a save to update timestamp or just trigger broadcast?
     # Simple save triggers broadcast
     note.save()
+
+@receiver(post_save, sender=Board)
+def board_saved(sender, instance, created, **kwargs):
+    # Broadcast board updates (privacy toggle, title changes, etc.)
+    from .serializers import BoardSerializer
+    data = BoardSerializer(instance).data
+    
+    if not created and instance.is_soft_deleted:
+        msg_type = 'BOARD_DELETED'
+    else:
+        msg_type = 'BOARD_CREATED' if created else 'BOARD_UPDATED'
+        
+    broadcast_update(instance.id, msg_type, data)
+
+@receiver(post_save, sender=BoardInvite)
+def board_invite_saved(sender, instance, created, **kwargs):
+    """
+    When an invite is created (either manually or via access request approval),
+    broadcast to the board so the requester's UI can auto-refresh.
+    """
+    if created:
+        broadcast_update(instance.board.id, 'ACCESS_GRANTED', {'email': instance.email})
+
+@receiver(post_save, sender=AccessRequest)
+def access_request_saved(sender, instance, created, **kwargs):
+    """Notify when a request is rejected so the user can try again."""
+    if not created and instance.status == 'REJECTED':
+        broadcast_update(instance.board.id, 'ACCESS_REJECTED', {
+            'email': instance.email,
+            'ghost_id': str(instance.ghost.ghost_id)
+        })
