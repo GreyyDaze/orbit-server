@@ -22,7 +22,8 @@ class Command(BaseCommand):
         # 1. Soft Delete (Day 30)
         profiles_to_soft_delete = AnonymousProfile.objects.filter(
             created_at__lt=thirty_days_ago, 
-            is_soft_deleted=False
+            is_soft_deleted=False,
+            is_pro=False # PRO users are permanent
         )
         soft_count = profiles_to_soft_delete.update(
             is_soft_deleted=True, 
@@ -48,7 +49,8 @@ class Command(BaseCommand):
         boards_to_soft_delete = Board.objects.filter(
             created_at__lt=thirty_days_ago,
             is_soft_deleted=False,
-            creator_ghost__user__isnull=True 
+            creator_ghost__user__isnull=True,
+            creator_ghost__is_pro=False # PRO users' boards are permanent
         )
         board_soft_count = boards_to_soft_delete.update(
             is_soft_deleted=True,

@@ -241,3 +241,29 @@ class ProfileView(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class GhostProfileView(APIView):
+    """
+    Get AnonymousProfile details (is_pro, created_at, etc.)
+    PUBLIC - Uses X-Ghost-ID header.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        if not hasattr(request, 'ghost') or not request.ghost:
+            return Response({"detail": "Ghost ID required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        profile = request.ghost
+        
+        # Calculate board count for the UI
+        board_count = Board.objects.filter(creator_ghost=profile, is_soft_deleted=False).count()
+        
+        return Response({
+            "ghost_id": str(profile.ghost_id),
+            "is_pro": profile.is_pro,
+            "created_at": profile.created_at.isoformat(),
+            "board_count": board_count,
+            "board_limit": 2 if not profile.is_pro else None,
+            "is_soft_deleted": profile.is_soft_deleted,
+            "has_account": profile.user is not None
+        })

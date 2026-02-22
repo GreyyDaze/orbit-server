@@ -62,6 +62,10 @@ class AnonymousProfile(models.Model):
     is_soft_deleted = models.BooleanField(default=False)
     soft_deleted_at = models.DateTimeField(null=True, blank=True)
 
+    # Subscription Status
+    is_pro = models.BooleanField(default=False)
+    stripe_customer_id = models.CharField(max_length=255, null=True, blank=True)
+
     def __str__(self):
         return f"Ghost ({str(self.ghost_id)[:8]})"
 

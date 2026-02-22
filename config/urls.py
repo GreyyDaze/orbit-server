@@ -9,4 +9,7 @@ urlpatterns = [
     
     # Identity APIs (Auth & Ghosts)
     path('api/v1/identity/', include('identity.urls')),
+
+    # Payment APIs (Stripe)
+    path('api/v1/payments/', include('payments.urls')),
 ]

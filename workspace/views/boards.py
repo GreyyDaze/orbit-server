@@ -121,9 +121,21 @@ class BoardViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_201_CREATED)
 
     def perform_create(self, serializer):
-        if not getattr(self.request, 'ghost', None):
+        ghost = getattr(self.request, 'ghost', None)
+        if not ghost:
             raise ValidationError({"detail": "X-Ghost-ID header required."})
-        serializer.save(creator_ghost=self.request.ghost)
+            
+        # PRO Check
+        if not ghost.is_pro:
+            # Check existing boards for this ghost
+            board_count = Board.objects.filter(creator_ghost=ghost, is_soft_deleted=False).count()
+            if board_count >= 2:
+                raise ValidationError({
+                    "detail": "Free tier limit reached. You can only create up to 2 active boards.",
+                    "code": "limit_reached"
+                })
+        
+        serializer.save(creator_ghost=ghost)
 
     @action(detail=True, methods=['post'], url_path='request-access')
     def request_access(self, request, pk=None):

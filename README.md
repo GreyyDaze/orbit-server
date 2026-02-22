@@ -8,6 +8,8 @@ The backend API and websocket server for **Orbit**, an anonymous feedback board 
 - **Real-Time WebSockets**: Powered by Django Channels and Redis for live board updates.
 - **Board Management**: Secure creation, claiming, and administration of feedback boards.
 - **Permissions System**: Granular permission logic for Authors, Admins, and Guests.
+- **Stripe Integration**: Secure payment processing and webhook handling for Orbit Pro.
+- **Freemium Lifecycle**: Server-side enforcement of board limits and automated data retention/purging policies.
 - **Background Tasks**: Celery workers for housekeeping and async processing.
 
 ## 🛠 Tech Stack
@@ -80,6 +82,17 @@ The backend API and websocket server for **Orbit**, an anonymous feedback board 
 
     # Beat (Scheduler)
     celery -A config beat -l info
+    ```
+
+## 🧪 Load Testing
+
+The project includes a [k6](https://k6.io/) script to benchmark WebSocket performance.
+
+1.  **Install k6**: `brew install k6`
+2.  **Run Test**:
+    ```bash
+    # Replace with a valid board ID from your local DB
+    BOARD_ID="your-uuid-here" k6 run scripts/load_test.js
     ```
 
 ## 🔗 Connection

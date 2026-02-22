@@ -1,10 +1,11 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
-from .views import GenerateGhostIDView, SendOTPView, VerifyOTPView, LogoutView, ProfileView, MigrateGhostDataView
+from .views import GenerateGhostIDView, SendOTPView, VerifyOTPView, LogoutView, ProfileView, MigrateGhostDataView, GhostProfileView
 
 urlpatterns = [
     # Ghost Identity
     path('ghost/generate/', GenerateGhostIDView.as_view(), name='generate_ghost'),
+    path('ghost/me/', GhostProfileView.as_view(), name='ghost_profile'),
     path('ghost/migrate/', MigrateGhostDataView.as_view(), name='migrate_ghost_data'),
     
     # Identity Management
