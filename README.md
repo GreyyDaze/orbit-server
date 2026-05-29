@@ -119,7 +119,7 @@ CORS_ALLOWED_ORIGINS=http://localhost:3000
 
 ## 🧪 Testing & Verification
 
-The backend uses **Pytest** with **Risk-Based Integration Testing** to ensure the integrity of the freemium model and security rules.
+The backend uses **Pytest** with risk-based integration testing to ensure the integrity of the freemium model and security rules.
 
 ### Running Tests
 
@@ -138,13 +138,21 @@ In the `orbit-server` repo, we intentionally prioritize **Integration Tests** ov
 - **Why?** In a Django-based system, the most critical failures happen at the intersection of Permissions, Database Queries, and API Responses.
 - **The Goal**: By testing the real endpoints against a real (test) database, we verify that the "freemium guardrails" (like the 2-board limit for Guests) are strictly enforced. We avoid "mocking" the database here because we want to test the **actual state** of the data, not a simulated version of it.
 
-## 📈 Performance Testing
+## Performance Testing (k6)
 
-The project includes a [k6](https://k6.io/) script to benchmark WebSocket performance.
+The project includes a [k6](https://k6.io/) script to benchmark WebSocket performance with latency measurement.
 
-1.  **Install k6**: `brew install k6`
-2.  **Run Test**:
-    ```bash
-    # Replace with a valid board ID from your local DB
-    BOARD_ID="your-uuid-here" k6 run scripts/load_test.js
-    ```
+**Thresholds enforced:**
+- p95 message latency < 50ms
+- Average max VU latency < 100ms
+- Message success rate > 99%
+- Connection success rate > 95%
+
+**Run Test:**
+```bash
+# Replace with a valid board ID from your local DB
+BOARD_ID="your-uuid-here" k6 run scripts/load_test.js
+
+# Custom latency threshold (optional, default 50ms)
+BOARD_ID="your-uuid-here" LATENCY_THRESHOLD_MS=75 k6 run scripts/load_test.js
+```

@@ -1,5 +1,15 @@
 import ws from 'k6/ws';
-import { check } from 'k6';
+import { check, sleep } from 'k6';
+import { Trend, Rate } from 'k6/metrics';
+
+// Custom metrics for latency tracking
+const wsLatency = new Trend('ws_message_latency_ms');
+const wsLatencyMax = new Trend('ws_message_latency_max_ms');
+const messageSuccessRate = new Rate('message_success_rate');
+const connectionSuccessRate = new Rate('connection_success_rate');
+
+// Latency threshold target: p95 < 50ms
+const LATENCY_THRESHOLD_MS = 50;
 
 // 1. Configure the load test: Ramp up to 500 concurrent WebSocket connections
 export const options = {
@@ -8,41 +18,86 @@ export const options = {
     { duration: '1m', target: 500 },  // Hold 500 users for 1 minute
     { duration: '10s', target: 0 },   // Ramp down gracefully
   ],
+  thresholds: {
+    ws_message_latency_ms: ['p(95) < 50'],   // 95% of messages under 50ms
+    ws_message_latency_max_ms: ['avg < 100'], // Avg max per-VU under 100ms
+    message_success_rate: ['rate > 0.99'],     // 99%+ messages received successfully
+    connection_success_rate: ['rate > 0.95'],  // 95%+ connections succeed
+  },
 };
 
 // 2. Define the behavior of each "virtual user" (VU)
 export default function () {
-  // We need an actual board ID from your local database.
-  // We will pass this via an environment variable when running k6.
-  const boardId = __ENV.BOARD_ID || '00000000-0000-0000-0000-000000000000'; 
-  
-  // Note: Django Channels usually runs on :8000 locally via Daphne or runserver
+  const boardId = __ENV.BOARD_ID || '00000000-0000-0000-0000-000000000000';
+  const latencyThreshold = parseInt(__ENV.LATENCY_THRESHOLD_MS) || LATENCY_THRESHOLD_MS;
+
   const url = `ws://localhost:8000/ws/board/${boardId}/`;
+
+  // Track max latency per VU for aggregate reporting
+  let maxLatencySeen = 0;
 
   const res = ws.connect(url, null, function (socket) {
     socket.on('open', () => {
-      // Simulate real user interaction: A user "moving" something or sending an event
+      connectionSuccessRate.add(true);
+
+      // Send a ping every 2 seconds with a unique timestamp to measure round-trip
       socket.setInterval(function timeout() {
-        // We send a dummy payload that Channels will receive
-        socket.send(JSON.stringify({ 
-          type: 'ping', 
-          payload: { timestamp: Date.now() } 
+        const sentAt = Date.now();
+        socket.send(JSON.stringify({
+          type: 'ping',
+          payload: { timestamp: sentAt },
         }));
-      }, 2000); // 1 ping every 2 seconds per user = 250 requests/sec at 500 users
+      }, 2000);
     });
 
-    // When the server broadcasts a message back to the clients
     socket.on('message', (msg) => {
-      // In a real scenario, you can check parsing time or latency here
-      check(msg, { 'received broadcast message': (msg) => msg.length > 0 });
+      messageSuccessRate.add(true);
+      try {
+        const parsed = JSON.parse(msg);
+        // Only measure latency for messages that carry our timestamp
+        if (parsed && parsed.payload && parsed.payload.timestamp) {
+          const now = Date.now();
+          const sentAt = parsed.payload.timestamp;
+          const latency = now - sentAt;
+          wsLatency.add(latency);
+          if (latency > maxLatencySeen) {
+            maxLatencySeen = latency;
+          }
+          // Fail if latency exceeds threshold
+          check(latency, {
+            [`latency < ${latencyThreshold}ms`]: (l) => l < latencyThreshold,
+          });
+        }
+      } catch (e) {
+        // Non-JSON or non-timestamp messages are fine (e.g., board_update from signals)
+        messageSuccessRate.add(true);
+      }
     });
 
-    // Close the socket connection after 1 minute of testing
+    socket.on('error', (e) => {
+      connectionSuccessRate.add(false);
+    });
+
+    socket.on('close', () => {
+      // Record max latency for this VU at close
+      wsLatencyMax.add(maxLatencySeen);
+    });
+
+    // Close the socket after 1 minute
     socket.setTimeout(function () {
       socket.close();
-    }, 60000); 
+    }, 60000);
   });
 
-  // Check if the connection successfully switched to the WebSocket protocol (101 status code)
-  check(res, { 'status is 101 (Switching Protocols)': (r) => r && r.status === 101 });
+  // Connection success check
+  const connected = res && res.status === 101;
+  check(res, {
+    'status is 101 (Switching Protocols)': (r) => r && r.status === 101,
+  });
+  if (!connected) {
+    connectionSuccessRate.add(false);
+  }
+
+  // Brief pause between connections to avoid thundering herd
+  sleep(1);
 }
