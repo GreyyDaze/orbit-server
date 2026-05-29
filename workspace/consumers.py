@@ -25,9 +25,17 @@ class BoardConsumer(AsyncWebsocketConsumer):
             self.channel_name
         )
 
-    # Receive message from WebSocket (Optional: for cursor tracking or temp moves)
+    # Receive message from WebSocket — echo pings back with timestamp for latency measurement
     async def receive(self, text_data):
-        pass
+        try:
+            data = json.loads(text_data)
+            if data.get('type') == 'ping':
+                await self.send(text_data=json.dumps({
+                    'type': 'pong',
+                    'payload': data.get('payload', {})
+                }))
+        except json.JSONDecodeError:
+            pass
 
     # Receive message from room group (Broadcasts from Signals)
     async def board_update(self, event):
